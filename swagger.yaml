@@ -1,0 +1,243 @@
+openapi: 3.0.0
+info:
+  title: Adoptme API - Users Module
+  description: API documentation for the Users module of the Adoptme application
+  version: 1.0.0
+  contact:
+    name: Adoptme Team
+    email: support@adoptme.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+paths:
+  /api/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Retrieve a list of all users in the system
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  payload:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/{uid}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Retrieve a specific user by their ID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+            example: "507f1f77bcf86cd799439011"
+      responses:
+        '200':
+          description: User found successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  payload:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update an existing user's information
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+            example: "507f1f77bcf86cd799439011"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "User updated"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Delete a user from the system
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+            example: "507f1f77bcf86cd799439011"
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "User deleted"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: User unique identifier
+          example: "507f1f77bcf86cd799439011"
+        first_name:
+          type: string
+          description: User's first name
+          example: "Juan"
+        last_name:
+          type: string
+          description: User's last name
+          example: "Pérez"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "juan.perez@email.com"
+        password:
+          type: string
+          description: User's hashed password
+          example: "$2b$10$..."
+        role:
+          type: string
+          enum: [user, admin]
+          description: User's role in the system
+          example: "user"
+        pets:
+          type: array
+          items:
+            type: string
+          description: Array of pet IDs owned by the user
+          example: ["507f1f77bcf86cd799439012"]
+
+    UserUpdate:
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: User's first name
+          example: "Juan Carlos"
+        last_name:
+          type: string
+          description: User's last name
+          example: "Pérez García"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "juancarlos.perez@email.com"
+        password:
+          type: string
+          description: New password (will be hashed)
+          example: "newSecurePassword123"
+
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        error:
+          type: string
+          description: Error message
+          example: "User not found"
