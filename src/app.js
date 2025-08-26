@@ -1,9 +1,25 @@
 import express from "express"
 import mongoose from "mongoose"
 import cors from "cors"
-import { specs, swaggerUi } from "./config/swagger.config.js"
+import dotenv from "dotenv"
+import { specs, swaggerUi } from "./config/swagger.js"
+import { connectDB } from "./config/database.js"
+
+// Import routers
+import usersRouter from "./routes/users.router.js"
+import petsRouter from "./routes/pets.router.js"
+import adoptionsRouter from "./routes/adoptions.router.js"
+import mocksRouter from "./routes/mocks.router.js"
+
+// Load environment variables
+dotenv.config()
 
 const app = express()
+
+// Connect to database
+if (process.env.NODE_ENV !== "test") {
+  connectDB()
+}
 
 // Middleware
 app.use(cors())
@@ -22,125 +38,13 @@ app.get("/", (req, res) => {
   })
 })
 
-// API Routes (these would be imported from actual router files)
-// For now, creating basic placeholder routes to satisfy tests
+// API Routes
+app.use("/api/users", usersRouter)
+app.use("/api/pets", petsRouter)
+app.use("/api/adoptions", adoptionsRouter)
+app.use("/api/mocks", mocksRouter)
 
-// Users routes
-app.get("/api/users", (req, res) => {
-  res.json({ status: "success", payload: [] })
-})
-
-app.get("/api/users/:uid", (req, res) => {
-  const { uid } = req.params
-  if (!mongoose.Types.ObjectId.isValid(uid)) {
-    return res.status(400).json({ status: "error", error: "Invalid user ID format" })
-  }
-  res.status(404).json({ status: "error", error: "User not found" })
-})
-
-app.put("/api/users/:uid", (req, res) => {
-  const { uid } = req.params
-  if (!mongoose.Types.ObjectId.isValid(uid)) {
-    return res.status(400).json({ status: "error", error: "Invalid user ID format" })
-  }
-  res.status(404).json({ status: "error", error: "User not found" })
-})
-
-app.delete("/api/users/:uid", (req, res) => {
-  const { uid } = req.params
-  if (!mongoose.Types.ObjectId.isValid(uid)) {
-    return res.status(400).json({ status: "error", error: "Invalid user ID format" })
-  }
-  res.status(404).json({ status: "error", error: "User not found" })
-})
-
-// Pets routes
-app.get("/api/pets", (req, res) => {
-  res.json({ status: "success", payload: [] })
-})
-
-app.post("/api/pets", (req, res) => {
-  const { name, specie, birthDate, adopted, image } = req.body
-  const newPet = {
-    _id: new mongoose.Types.ObjectId().toString(),
-    name,
-    specie,
-    birthDate,
-    adopted: adopted || false,
-    image,
-  }
-  res.json({ status: "success", payload: newPet })
-})
-
-app.delete("/api/pets/:pid", (req, res) => {
-  const { pid } = req.params
-  if (!mongoose.Types.ObjectId.isValid(pid)) {
-    return res.status(400).json({ status: "error", error: "Invalid pet ID format" })
-  }
-  res.json({ status: "success", message: "Pet deleted" })
-})
-
-// Adoptions routes
-app.get("/api/adoptions", (req, res) => {
-  res.json({ status: "success", payload: [] })
-})
-
-app.get("/api/adoptions/:aid", (req, res) => {
-  const { aid } = req.params
-  if (!mongoose.Types.ObjectId.isValid(aid)) {
-    return res.status(400).json({ status: "error", error: "Invalid adoption ID format" })
-  }
-  res.status(404).json({ status: "error", error: "Adoption not found" })
-})
-
-app.post("/api/adoptions/:uid/:pid", (req, res) => {
-  const { uid, pid } = req.params
-
-  if (!mongoose.Types.ObjectId.isValid(uid)) {
-    return res.status(400).json({ status: "error", error: "Invalid user ID format" })
-  }
-
-  if (!mongoose.Types.ObjectId.isValid(pid)) {
-    return res.status(400).json({ status: "error", error: "Invalid pet ID format" })
-  }
-
-  // Simulate user not found
-  if (uid === "507f1f77bcf86cd799439011") {
-    return res.status(404).json({ status: "error", error: "User not found" })
-  }
-
-  // Simulate pet not found
-  if (pid === "507f1f77bcf86cd799439012") {
-    return res.status(404).json({ status: "error", error: "Pet not found" })
-  }
-
-  // For testing purposes, we'll track adopted pets in memory
-  if (!app.locals.adoptedPets) {
-    app.locals.adoptedPets = new Set()
-  }
-
-  if (app.locals.adoptedPets.has(pid)) {
-    return res.status(400).json({ status: "error", error: "Pet is already adopted" })
-  }
-
-  // Mark pet as adopted
-  app.locals.adoptedPets.add(pid)
-
-  const adoption = {
-    _id: new mongoose.Types.ObjectId().toString(),
-    owner: uid,
-    pet: pid,
-    adoptionDate: new Date(),
-  }
-
-  res.json({
-    status: "success",
-    message: "Pet adopted",
-    adoption,
-  })
-})
-
-// Sessions routes
+// Sessions routes (keeping as basic implementation for now)
 app.post("/api/sessions/register", (req, res) => {
   const { first_name, last_name, email, password } = req.body
   const newUser = {
