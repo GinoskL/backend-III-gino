@@ -1,5 +1,4 @@
 import express from "express"
-import mongoose from "mongoose"
 import cors from "cors"
 import dotenv from "dotenv"
 import { specs, swaggerUi } from "./config/swagger.js"
@@ -39,36 +38,136 @@ app.get("/", (req, res) => {
 })
 
 // API Routes
+// app.use("/api/sessions", sessionsRouter)
 app.use("/api/users", usersRouter)
 app.use("/api/pets", petsRouter)
 app.use("/api/adoptions", adoptionsRouter)
 app.use("/api/mocks", mocksRouter)
 
-// Sessions routes (keeping as basic implementation for now)
-app.post("/api/sessions/register", (req, res) => {
-  const { first_name, last_name, email, password } = req.body
-  const newUser = {
-    _id: new mongoose.Types.ObjectId().toString(),
-    first_name,
-    last_name,
-    email,
-    role: "user",
-    pets: [],
-  }
-  res.json({ status: "success", payload: newUser })
-})
-
-app.post("/api/sessions/login", (req, res) => {
-  res.json({ status: "success", message: "Login successful" })
-})
-
-app.get("/api/sessions/current", (req, res) => {
-  res.status(401).json({ status: "error", error: "No active session" })
-})
-
-app.post("/api/sessions/logout", (req, res) => {
-  res.json({ status: "success", message: "Logout successful" })
-})
+// OpenAPI documentation for Sessions endpoints
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: User ID
+ *           example: "507f1f77bcf86cd799439011"
+ *         first_name:
+ *           type: string
+ *           description: User's first name
+ *           example: "Juan"
+ *         last_name:
+ *           type: string
+ *           description: User's last name
+ *           example: "Pérez"
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User's email address
+ *           example: "juan.perez@email.com"
+ *         role:
+ *           type: string
+ *           enum: [user, admin]
+ *           description: User role
+ *           example: "user"
+ *         pets:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Array of pet IDs owned by the user
+ *           example: []
+ *     UserCurrentDTO:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *         first_name:
+ *           type: string
+ *           example: "Juan"
+ *         last_name:
+ *           type: string
+ *           example: "Pérez"
+ *         email:
+ *           type: string
+ *           example: "juan.perez@email.com"
+ *         role:
+ *           type: string
+ *           example: "user"
+ *     RegisterRequest:
+ *       type: object
+ *       required:
+ *         - first_name
+ *         - last_name
+ *         - email
+ *         - password
+ *       properties:
+ *         first_name:
+ *           type: string
+ *           description: User's first name
+ *           example: "Juan"
+ *         last_name:
+ *           type: string
+ *           description: User's last name
+ *           example: "Pérez"
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User's email address
+ *           example: "juan.perez@email.com"
+ *         password:
+ *           type: string
+ *           format: password
+ *           description: User's password
+ *           example: "mySecurePassword123"
+ *     LoginRequest:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User's email address
+ *           example: "juan.perez@email.com"
+ *         password:
+ *           type: string
+ *           format: password
+ *           description: User's password
+ *           example: "mySecurePassword123"
+ *     TokenResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           example: "success"
+ *         access_token:
+ *           type: string
+ *           description: JWT access token
+ *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJlbWFpbCI6Imp1YW4ucGVyZXpAZW1haWwuY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE2MzQ1NjcwMDAsImV4cCI6MTYzNDY1MzQwMH0.example"
+ *         user:
+ *           $ref: '#/components/schemas/UserCurrentDTO'
+ *     ApiError:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           example: "error"
+ *         error:
+ *           type: string
+ *           description: Error message
+ *           example: "Invalid credentials"
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
 
 // Error handling middleware
 app.use((err, req, res, next) => {

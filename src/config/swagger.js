@@ -39,9 +39,13 @@ const options = {
         name: "Mocks",
         description: "Mock data generation endpoints",
       },
+      {
+        name: "Sessions",
+        description: "Authentication and session management endpoints",
+      },
     ],
   },
-  apis: ["./src/routes/*.js"],
+  apis: ["./src/routes/*.js", "./src/app.js"],
 }
 
 const specs = swaggerJSDoc(options)
