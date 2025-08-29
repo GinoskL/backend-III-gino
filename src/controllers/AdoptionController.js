@@ -1,6 +1,11 @@
 import AdoptionService from "../services/AdoptionService.js"
+import mongoose from "mongoose"
 
 class AdoptionController {
+  isValidObjectId(id) {
+    return mongoose.Types.ObjectId.isValid(id)
+  }
+
   async createAdoption(req, res) {
     try {
       const adoption = await AdoptionService.createAdoption(req.body)
@@ -13,6 +18,51 @@ class AdoptionController {
         status: "error",
         error: error.message,
       })
+    }
+  }
+
+  async createAdoptionByUserAndPet(req, res) {
+    try {
+      const { uid, pid } = req.params
+
+      // Validate ObjectId format
+      if (!this.isValidObjectId(uid)) {
+        return res.status(400).json({
+          status: "error",
+          error: "Invalid user ID format",
+        })
+      }
+
+      if (!this.isValidObjectId(pid)) {
+        return res.status(400).json({
+          status: "error",
+          error: "Invalid pet ID format",
+        })
+      }
+
+      const adoption = await AdoptionService.createAdoptionByUserAndPet(uid, pid)
+      res.status(200).json({
+        status: "success",
+        message: "Pet adopted",
+        adoption: adoption,
+      })
+    } catch (error) {
+      if (error.message.includes("not found")) {
+        res.status(404).json({
+          status: "error",
+          error: error.message,
+        })
+      } else if (error.message.includes("already adopted")) {
+        res.status(400).json({
+          status: "error",
+          error: error.message,
+        })
+      } else {
+        res.status(400).json({
+          status: "error",
+          error: error.message,
+        })
+      }
     }
   }
 
@@ -33,7 +83,16 @@ class AdoptionController {
 
   async getAdoption(req, res) {
     try {
-      const adoption = await AdoptionService.getAdoptionById(req.params.aid)
+      const { aid } = req.params
+
+      if (!this.isValidObjectId(aid)) {
+        return res.status(400).json({
+          status: "error",
+          error: "Invalid adoption ID format",
+        })
+      }
+
+      const adoption = await AdoptionService.getAdoptionById(aid)
       res.json({
         status: "success",
         payload: adoption,

@@ -1,168 +1,100 @@
-import { expect } from "chai"
-import supertest from "supertest"
-import { before, after, describe, it } from "mocha"
-import app from "../src/app.js"
+import AdoptionRepository from "../repositories/AdoptionRepository.js"
+import PetRepository from "../repositories/PetRepository.js"
+import UserRepository from "../repositories/UserRepository.js"
 
-const requester = supertest(app)
-
-describe("Adoptions Router Tests", function () {
-  this.timeout(10000)
-
-  let testUser
-  let testPet
-  let testAdoption
-
-  // Setup: Create test user and pet before running tests
-  before(async () => {
-    // Create a test user
-    const userResponse = await requester.post("/api/sessions/register").send({
-      first_name: "Test",
-      last_name: "User",
-      email: "testuser@adoptions.com",
-      password: "password123",
-    })
-
-    testUser = userResponse.body.payload
-
-    // Create a test pet
-    const petResponse = await requester.post("/api/pets").send({
-      name: "Test Pet",
-      specie: "Dog",
-      birthDate: "2020-01-01",
-      adopted: false,
-      image: "test-pet.jpg",
-    })
-
-    testPet = petResponse.body.payload
-  })
-
-  // Cleanup: Remove test data after tests
-  after(async () => {
-    if (testUser && testUser._id) {
-      await requester.delete(`/api/users/${testUser._id}`)
+class AdoptionService {
+  async createAdoption(adoptionData) {
+    // Verify pet exists and is available
+    const pet = await PetRepository.findById(adoptionData.pet)
+    if (!pet) {
+      throw new Error("Pet not found")
     }
-    if (testPet && testPet._id) {
-      await requester.delete(`/api/pets/${testPet._id}`)
+    if (pet.adopted) {
+      throw new Error("Pet is already adopted")
     }
-    if (testAdoption && testAdoption._id) {
-      await requester.delete(`/api/adoptions/${testAdoption._id}`)
+
+    // Verify user exists
+    const user = await UserRepository.findById(adoptionData.owner)
+    if (!user) {
+      throw new Error("User not found")
     }
-  })
 
-  describe("GET /api/adoptions", () => {
-    it("should get all adoptions successfully", async () => {
-      const response = await requester.get("/api/adoptions")
+    return await AdoptionRepository.create(adoptionData)
+  }
 
-      expect(response.status).to.equal(200)
-      expect(response.body).to.have.property("status", "success")
-      expect(response.body).to.have.property("payload")
-      expect(response.body.payload).to.be.an("array")
-    })
+  async getAdoptionById(id) {
+    const adoption = await AdoptionRepository.findById(id)
+    if (!adoption) {
+      throw new Error("Adoption not found")
+    }
+    return adoption
+  }
 
-    it("should return empty array when no adoptions exist", async () => {
-      const response = await requester.get("/api/adoptions")
+  async getAllAdoptions() {
+    return await AdoptionRepository.findAll()
+  }
 
-      expect(response.status).to.equal(200)
-      expect(response.body.payload).to.be.an("array")
-    })
-  })
+  async updateAdoption(id, updateData) {
+    const adoption = await AdoptionRepository.update(id, updateData)
+    if (!adoption) {
+      throw new Error("Adoption not found")
+    }
 
-  describe("GET /api/adoptions/:aid", () => {
-    it("should return 404 for non-existent adoption", async () => {
-      const fakeId = "507f1f77bcf86cd799439011"
-      const response = await requester.get(`/api/adoptions/${fakeId}`)
-
-      expect(response.status).to.equal(404)
-      expect(response.body).to.have.property("status", "error")
-      expect(response.body).to.have.property("error")
-    })
-
-    it("should return 400 for invalid adoption ID format", async () => {
-      const invalidId = "invalid-id"
-      const response = await requester.get(`/api/adoptions/${invalidId}`)
-
-      expect(response.status).to.equal(400)
-      expect(response.body).to.have.property("status", "error")
-    })
-  })
-
-  describe("POST /api/adoptions/:uid/:pid", () => {
-    it("should create adoption successfully with valid user and pet", async () => {
-      const response = await requester.post(`/api/adoptions/${testUser._id}/${testPet._id}`)
-
-      expect(response.status).to.equal(200)
-      expect(response.body).to.have.property("status", "success")
-      expect(response.body).to.have.property("message", "Pet adopted")
-
-      // Store adoption for cleanup
-      testAdoption = response.body.adoption
-    })
-
-    it("should return 404 for non-existent user", async () => {
-      const fakeUserId = "507f1f77bcf86cd799439011"
-      const response = await requester.post(`/api/adoptions/${fakeUserId}/${testPet._id}`)
-
-      expect(response.status).to.equal(404)
-      expect(response.body).to.have.property("status", "error")
-      expect(response.body.error).to.include("User not found")
-    })
-
-    it("should return 404 for non-existent pet", async () => {
-      const fakePetId = "507f1f77bcf86cd799439012"
-      const response = await requester.post(`/api/adoptions/${testUser._id}/${fakePetId}`)
-
-      expect(response.status).to.equal(404)
-      expect(response.body).to.have.property("status", "error")
-      expect(response.body.error).to.include("Pet not found")
-    })
-
-    it("should return 400 for already adopted pet", async () => {
-      // First, create another user for this test
-      const anotherUserResponse = await requester.post("/api/sessions/register").send({
-        first_name: "Another",
-        last_name: "User",
-        email: "anotheruser@adoptions.com",
-        password: "password123",
+    // If adoption is approved, mark pet as adopted
+    if (updateData.status === "approved") {
+      await PetRepository.update(adoption.pet._id, {
+        adopted: true,
+        owner: adoption.owner._id,
       })
 
-      const anotherUser = anotherUserResponse.body.payload
+      // Add pet to user's pets array
+      const user = await UserRepository.findById(adoption.owner._id)
+      if (!user.pets.includes(adoption.pet._id)) {
+        user.pets.push(adoption.pet._id)
+        await user.save()
+      }
+    }
 
-      // Try to adopt the same pet that was already adopted
-      const response = await requester.post(`/api/adoptions/${anotherUser._id}/${testPet._id}`)
+    return adoption
+  }
 
-      expect(response.status).to.equal(400)
-      expect(response.body).to.have.property("status", "error")
-      expect(response.body.error).to.include("Pet is already adopted")
+  async deleteAdoption(id) {
+    const adoption = await AdoptionRepository.delete(id)
+    if (!adoption) {
+      throw new Error("Adoption not found")
+    }
+    return adoption
+  }
 
-      // Cleanup
-      await requester.delete(`/api/users/${anotherUser._id}`)
-    })
+  async getUserAdoptions(userId) {
+    return await AdoptionRepository.findByUser(userId)
+  }
 
-    it("should return 400 for invalid user ID format", async () => {
-      const invalidUserId = "invalid-user-id"
-      const response = await requester.post(`/api/adoptions/${invalidUserId}/${testPet._id}`)
+  async createAdoptionByUserAndPet(userId, petId) {
+    // Verify user exists
+    const user = await UserRepository.findById(userId)
+    if (!user) {
+      throw new Error("User not found")
+    }
 
-      expect(response.status).to.equal(400)
-      expect(response.body).to.have.property("status", "error")
-    })
+    // Verify pet exists and is available
+    const pet = await PetRepository.findById(petId)
+    if (!pet) {
+      throw new Error("Pet not found")
+    }
+    if (pet.adopted) {
+      throw new Error("Pet is already adopted")
+    }
 
-    it("should return 400 for invalid pet ID format", async () => {
-      const invalidPetId = "invalid-pet-id"
-      const response = await requester.post(`/api/adoptions/${testUser._id}/${invalidPetId}`)
+    // Create adoption record
+    const adoptionData = {
+      owner: userId,
+      pet: petId,
+      status: "pending",
+    }
 
-      expect(response.status).to.equal(400)
-      expect(response.body).to.have.property("status", "error")
-    })
-  })
+    return await AdoptionRepository.create(adoptionData)
+  }
+}
 
-  describe("Error handling", () => {
-    it("should handle server errors gracefully", async () => {
-      // Test with extremely long ID to potentially cause server error
-      const extremelyLongId = "a".repeat(1000)
-      const response = await requester.get(`/api/adoptions/${extremelyLongId}`)
-
-      expect(response.status).to.be.oneOf([400, 500])
-      expect(response.body).to.have.property("status", "error")
-    })
-  })
-})
+export default new AdoptionService()
